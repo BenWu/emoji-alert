@@ -2,15 +2,22 @@ import os
 
 import requests
 import sqlalchemy
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 from sqlalchemy import MetaData, Table
 
 
-def main(req):
+def main(req):  # TODO: change to input params through req
     username = os.environ['PG_USER']
     password = os.environ['PG_PASS']
     db_name = os.environ['DB_NAME']
-    api_key = os.environ['API_KEY']
+    slack_key = os.environ['SLACK_KEY']
+    sendgrid_key = os.environ['SENDGRID_KEY']
+    target_email = os.environ['TARGET_EMAIL']
+    from_email = os.environ['FROM_EMAIL']
     in_cloud = 'IN_CLOUD' in os.environ
+
+    print('starting')
 
     if not in_cloud:
         connection_string = (f'postgresql+psycopg2://{username}:{password}'
@@ -37,7 +44,7 @@ def main(req):
 
         response = requests.get(
             'https://slack.com/api/emoji.list',
-            headers={'Authorization': f'Bearer {api_key}'}
+            headers={'Authorization': f'Bearer {slack_key}'}
         )
         response.raise_for_status()
         emojis = {
@@ -62,7 +69,43 @@ def main(req):
         if len(new_emojis) > 0:
             conn.execute(emoji_table.insert(values=new_emojis))
 
-        print(new_emojis)
+    print(new_emojis)
+
+    if len(new_emojis) == 0 and len(emojis_to_update) == 0:
+        return
+
+    update_emoji_html = "\n\n".join([
+        f'<div>{name} <a> src="{existing_emojis[name]}"/> -> <img src="{url}"/></div>'
+        for name, url in emojis_to_update.items()
+    ])
+    new_emoji_html = "\n\n".join(
+        [f'<div>{emoji["name"]} <img src="{emoji["img_url"]}"/></div>' for emoji in new_emojis]
+    )
+
+    email_body = f"""
+    <p>Updated emojis:</p>
+    
+    {update_emoji_html}
+    
+    
+    
+    <p>New emojis:</p>
+
+    {new_emoji_html}
+    """
+
+    message = Mail(
+        from_email=from_email,
+        to_emails=target_email,
+        subject='New Emoji Alert',
+        html_content=email_body,
+    )
+
+    sg = SendGridAPIClient(sendgrid_key)
+    response = sg.send(message)
+    print(response.status_code)
+    print(response.body)
+    print(response.headers)
 
 
 if __name__ == '__main__':
