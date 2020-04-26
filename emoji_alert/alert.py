@@ -99,18 +99,19 @@ def main(req):
     {new_emoji_html}
     """
 
-    message = Mail(
-        from_email=from_email,
-        to_emails=target_email,
-        subject='New Emoji Alert',
-        html_content=email_body,
-    )
-
-    sg = SendGridAPIClient(sendgrid_key)
-    response = sg.send(message)
-    print(response.status_code)
-    print(response.body)
-    print(response.headers)
+    for email in from_email.split(','):
+        print(f'sending to {email}')
+        message = Mail(
+            from_email=from_email,
+            to_emails=email,
+            subject='New Emoji Alert',
+            html_content=email_body,
+        )
+        sg = SendGridAPIClient(sendgrid_key)
+        response = sg.send(message)
+        print(response.status_code)
+        print(response.body)
+        print(response.headers)
 
 
 if __name__ == '__main__':
