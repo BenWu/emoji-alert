@@ -1,5 +1,9 @@
 # emoji-alert
 
+Slack new custom emoji alert
+
+![diagram](diagram.png)
+
 ### Requirements
 
 - `terraform >= 0.12.x`
