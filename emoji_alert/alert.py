@@ -8,6 +8,8 @@ from sqlalchemy import MetaData, Table
 
 
 def main(req):
+    req = req.get_json()
+
     username = os.environ['PG_USER']
     password = os.environ['PG_PASS']
     db_name = os.environ['DB_NAME']
@@ -15,10 +17,11 @@ def main(req):
     sendgrid_key = os.environ['SENDGRID_KEY']
 
     in_cloud = req.get('in_cloud', False)
+    dryrun = req.get('dryrun', False)
 
     try:
-        target_email = os.environ['to_email']
-        from_email = os.environ['from_email']
+        target_email = req['to_email']
+        from_email = req['from_email']
     except KeyError:
         raise ValueError("'to_email' and 'from_email' required in input")
 
@@ -62,21 +65,22 @@ def main(req):
             in emojis.items() if name in existing_emojis
                                  and existing_emojis[name] != url
         }
-        for name, url in emojis_to_update.items():
-            conn.execute(
-                emoji_table.update().where(emoji_table.c.name == name).values(img_url=url)
-            )
+        if not dryrun:
+            for name, url in emojis_to_update.items():
+                conn.execute(
+                    emoji_table.update().where(emoji_table.c.name == name).values(img_url=url)
+                )
 
         new_emojis = [
             {'name': name, 'img_url': url} for name, url
             in emojis.items() if name not in existing_emojis
         ]
-        if len(new_emojis) > 0:
+        if len(new_emojis) > 0 and not dryrun:
             conn.execute(emoji_table.insert(values=new_emojis))
 
     print(new_emojis)
 
-    if len(new_emojis) == 0 and len(emojis_to_update) == 0:
+    if (len(new_emojis) == 0 and len(emojis_to_update) == 0) or not dryrun:
         return
 
     update_emoji_html = "\n\n".join([
@@ -99,7 +103,7 @@ def main(req):
     {new_emoji_html}
     """
 
-    for email in from_email.split(','):
+    for email in target_email.split(','):
         print(f'sending to {email}')
         message = Mail(
             from_email=from_email,
@@ -115,7 +119,14 @@ def main(req):
 
 
 if __name__ == '__main__':
-    main({
+    class Request:
+        def __init__(self, body):
+            self.body = body
+
+        def get_json(self):
+            return self.body
+
+    main(Request({
         'to_email': '',
-        'test_email': '',
-    })
+        'from_email': '',
+    }))

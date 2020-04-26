@@ -7,6 +7,15 @@ echo ""
 echo "project id:"
 read -r project
 
+echo "GCS bucket:"
+read -r bucket
+
+echo "email to send from:"
+read -r from_email
+
+echo "comma-separated list of emails to send to:"
+read -r to_email
+
 echo "database password (hidden):"
 read -sr db_pass
 
@@ -20,6 +29,18 @@ echo "" > terraform.tfvars
 
 if [[ -n $project ]]; then
   echo "project = \"$project\"" >> terraform.tfvars
+fi
+
+if [[ -n $bucket ]]; then
+  echo "bucket_name = \"$bucket\"" >> terraform.tfvars
+fi
+
+if [[ -n $from_email ]]; then
+  echo "from_email = \"$from_email\"" >> terraform.tfvars
+fi
+
+if [[ -n $to_email ]]; then
+  echo "to_email = \"$to_email\"" >> terraform.tfvars
 fi
 
 if [[ -n $db_pass ]]; then
