@@ -7,15 +7,20 @@ from sendgrid.helpers.mail import Mail
 from sqlalchemy import MetaData, Table
 
 
-def main(req):  # TODO: change to input params through req
+def main(req):
     username = os.environ['PG_USER']
     password = os.environ['PG_PASS']
     db_name = os.environ['DB_NAME']
     slack_key = os.environ['SLACK_KEY']
     sendgrid_key = os.environ['SENDGRID_KEY']
-    target_email = os.environ['TARGET_EMAIL']
-    from_email = os.environ['FROM_EMAIL']
-    in_cloud = 'IN_CLOUD' in os.environ
+
+    in_cloud = req.get('in_cloud', False)
+
+    try:
+        target_email = os.environ['to_email']
+        from_email = os.environ['from_email']
+    except KeyError:
+        raise ValueError("'to_email' and 'from_email' required in input")
 
     print('starting')
 
@@ -75,21 +80,21 @@ def main(req):  # TODO: change to input params through req
         return
 
     update_emoji_html = "\n\n".join([
-        f'<div>{name} <a> src="{existing_emojis[name]}"/> -> <img src="{url}"/></div>'
+        f'<div><div>{name}</div> <a> src="{existing_emojis[name]}"/> -> <img src="{url}"/></div>'
         for name, url in emojis_to_update.items()
     ])
-    new_emoji_html = "\n\n".join(
-        [f'<div>{emoji["name"]} <img src="{emoji["img_url"]}"/></div>' for emoji in new_emojis]
-    )
+    new_emoji_html = "\n\n".join([
+        f'<div><div>{emoji["name"]}</div> <img src="{emoji["img_url"]}"/></div>'
+        for emoji in new_emojis
+    ])
 
     email_body = f"""
-    <p>Updated emojis:</p>
-    
+    <h3>Updated emojis:</h3>
+
     {update_emoji_html}
-    
-    
-    
-    <p>New emojis:</p>
+
+
+    <h3>New emojis:</h3>
 
     {new_emoji_html}
     """
@@ -109,4 +114,7 @@ def main(req):  # TODO: change to input params through req
 
 
 if __name__ == '__main__':
-    main(None)
+    main({
+        'to_email': '',
+        'test_email': '',
+    })
